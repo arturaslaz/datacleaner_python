@@ -15,6 +15,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    if: github.repository == 'arturaslaz/datacleaner_python'
 
     permissions:
       contents: 'read'
