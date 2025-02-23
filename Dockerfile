@@ -16,12 +16,12 @@ COPY . .
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV STREAMLIT_SERVER_PORT=8501
+ENV STREAMLIT_SERVER_PORT=8080
 ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
 ENV ENVIRONMENT=production
 
 # Expose the port Streamlit will run on
-EXPOSE 8501
+EXPOSE 8080
 
 # Command to run the application
-CMD ["streamlit", "run", "app/main.py", "--server.port", "8501", "--server.address", "0.0.0.0"] 
+CMD ["streamlit", "run", "app/main.py", "--server.port", "8080", "--server.address", "0.0.0.0"] 
