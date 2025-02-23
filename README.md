@@ -84,7 +84,7 @@ docker run -p 8501:8501 datacleaner
 
 ## Deployment
 
-The application is configured for deployment on Google Cloud Run. See the deployment documentation for detailed instructions.
+The application is configured for deployment on Google Cloud Run. See the deployment documentation for detailed instructions. It is currently deployed as a publicly accessible application at https://datacleaner-app-869238535655.europe-west3.run.app/
 
 ## Contributing
 
