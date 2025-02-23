@@ -202,7 +202,7 @@ def main():
         with col1:
             st.write("Original Data")
             st.dataframe(
-                st.session_state.uploaded_df,
+                st.session_state.uploaded_df.dropna(how='all'),
                 use_container_width=True,
                 height=400
             )
@@ -210,7 +210,7 @@ def main():
         with col2:
             st.write("Cleaned Data")
             st.dataframe(
-                st.session_state.cleaned_df,
+                st.session_state.cleaned_df.dropna(how='all'),
                 use_container_width=True,
                 height=400
             )
