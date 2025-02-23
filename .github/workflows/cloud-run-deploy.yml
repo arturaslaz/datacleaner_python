@@ -39,7 +39,6 @@ jobs:
         run: |
           echo "PROJECT_ID=$(gcloud secrets versions access latest --secret=GCP_PROJECT_ID)" >> $GITHUB_ENV
           echo "GOOGLE_API_KEY=$(gcloud secrets versions access latest --secret=GOOGLE_API_KEY)" >> $GITHUB_ENV
-          echo "PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')" >> $GITHUB_ENV
 
       - name: Authorize Docker push
         run: gcloud auth configure-docker ${{ env.REGISTRY }}
@@ -55,7 +54,7 @@ jobs:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
           image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-          service-account: ${{ env.PROJECT_NUMBER }}-compute@developer.gserviceaccount.com
+          flags: --allow-unauthenticated
           env_vars: |
             GOOGLE_API_KEY=${{ env.GOOGLE_API_KEY }}
             ENVIRONMENT=production 
