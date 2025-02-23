@@ -1,0 +1,8 @@
+Name,Age,Salary,Department,Join_Date
+John Doe,30,75000,IT,2020-01-01
+Jane Smith,,85000,HR,2019-05-15
+John Doe,30,75000,IT,2020-01-01
+Bob Johnson,xyz,92000,Finance,2021-03-20
+Alice Brown,28,,Marketing,2020-11-30
+Tom Wilson,45,150000,IT,invalid_date
+,31,78000,HR,2021-02-28
