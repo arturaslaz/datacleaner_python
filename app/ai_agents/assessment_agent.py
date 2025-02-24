@@ -160,14 +160,29 @@ COLUMN SPECIFIC ISSUES:
 
     def _generate_dataset_info(self, df: pd.DataFrame) -> str:
         """Generate a text summary of the dataset."""
-        info = f"""
-        Shape: {df.shape}
-        Columns: {', '.join(df.columns)}
-        Data Types: {df.dtypes.to_dict()}
-        Missing Values: {df.isna().sum().to_dict()}
-        Duplicate Rows: {df.duplicated().sum()}
-        """
-        return info
+        try:
+            # Convert dtypes to strings safely
+            dtypes_dict = {str(col): str(dtype) for col, dtype in df.dtypes.items()}
+            
+            # Convert missing values to strings safely
+            missing_dict = {str(col): int(count) for col, count in df.isna().sum().items()}
+            
+            info = f"""
+            Shape: {df.shape}
+            Columns: {', '.join(str(col) for col in df.columns)}
+            Data Types: {dtypes_dict}
+            Missing Values: {missing_dict}
+            Duplicate Rows: {df.duplicated().sum()}
+            """
+            return info
+        except Exception as e:
+            # Fallback to a simpler format if conversion fails
+            return f"""
+            Shape: {df.shape}
+            Number of Columns: {len(df.columns)}
+            Total Missing Values: {df.isna().sum().sum()}
+            Duplicate Rows: {df.duplicated().sum()}
+            """
 
     def _generate_column_stats(self, df: pd.DataFrame) -> str:
         """Generate statistical information about each column."""

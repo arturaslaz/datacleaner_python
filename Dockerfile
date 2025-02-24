@@ -5,6 +5,7 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first to leverage Docker cache
@@ -20,8 +21,12 @@ ENV STREAMLIT_SERVER_PORT=8080
 ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
 ENV ENVIRONMENT=production
 
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl --fail http://localhost:8080/_stcore/health || exit 1
+
 # Expose the port Streamlit will run on
 EXPOSE 8080
 
 # Command to run the application
-CMD ["streamlit", "run", "app/main.py", "--server.port", "8080", "--server.address", "0.0.0.0"] 
+ENTRYPOINT ["streamlit", "run", "app/main.py", "--server.port=8080", "--server.address=0.0.0.0"] 

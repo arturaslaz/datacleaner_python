@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from data_processing.cleaner import DataCleaner
 from ai_agents.assessment_agent import DataAssessmentAgent
 import asyncio
+import datetime
 
 # Load environment variables from .env file if in development
 if os.getenv('ENVIRONMENT') != 'production':
@@ -57,20 +58,49 @@ def reset_state():
 
 async def analyze_and_clean_data(df: pd.DataFrame):
     """Analyze the dataset and perform cleaning operations."""
-    # Initialize the assessment agent
-    agent = DataAssessmentAgent()
-    
-    # Get AI assessment and recommendations
-    assessment = await agent.assess_dataset(df)
-    
-    # Get cleaning strategy based on assessment
-    strategy = agent.get_cleaning_strategy(assessment)
-    
-    # Initialize and run the cleaner
-    cleaner = DataCleaner(df)
-    cleaned_df, report = cleaner.clean(strategy)
-    
-    return cleaned_df, report, assessment
+    try:
+        # If dataset is too large, sample it for analysis
+        MAX_ROWS_FOR_ANALYSIS = 10000
+        analysis_df = df
+        if len(df) > MAX_ROWS_FOR_ANALYSIS:
+            analysis_df = df.sample(n=MAX_ROWS_FOR_ANALYSIS, random_state=42)
+            st.warning(f"Dataset is large. Using {MAX_ROWS_FOR_ANALYSIS} rows for initial analysis.")
+        
+        # Initialize the assessment agent
+        agent = DataAssessmentAgent()
+        
+        # Set a timeout for the assessment
+        try:
+            assessment = await asyncio.wait_for(
+                agent.assess_dataset(analysis_df),
+                timeout=300  # 5 minutes timeout
+            )
+        except asyncio.TimeoutError:
+            st.error("Analysis timed out. Using default cleaning strategy.")
+            assessment = None
+        
+        # Get cleaning strategy based on assessment or use defaults
+        if assessment:
+            strategy = agent.get_cleaning_strategy(assessment)
+        else:
+            strategy = {
+                'standardize_names': True,
+                'remove_duplicates': True,
+                'handle_missing': 'auto',
+                'detect_outliers': 3.0,
+                'convert_types': True,
+                'remove_low_variance': 0.01
+            }
+            assessment = None  # Ensure we return None if assessment failed
+        
+        # Initialize and run the cleaner
+        cleaner = DataCleaner(df)
+        cleaned_df, report = cleaner.clean(strategy)
+        
+        return cleaned_df, report, assessment
+    except Exception as e:
+        st.error(f"Error during data processing: {str(e)}")
+        raise e
 
 def main():
     # Check for required environment variables
@@ -109,10 +139,90 @@ def main():
 
             # Read the file
             file_extension = Path(uploaded_file.name).suffix.lower()
-            if file_extension == '.csv':
-                df = pd.read_csv(uploaded_file)
-            else:  # Excel file
-                df = pd.read_excel(uploaded_file)
+            try:
+                if file_extension == '.csv':
+                    df = pd.read_csv(uploaded_file)
+                else:  # Excel file
+                    # Try multiple approaches to read Excel file
+                    excel_read_attempts = [
+                        # Attempt 1: Standard read
+                        lambda: pd.read_excel(uploaded_file),
+                        # Attempt 2: Read with header inference
+                        lambda: pd.read_excel(uploaded_file, header=[0, 1]),
+                        # Attempt 3: Skip potential header rows
+                        lambda: pd.read_excel(uploaded_file, skiprows=range(5)),
+                        # Attempt 4: Read without headers
+                        lambda: pd.read_excel(uploaded_file, header=None),
+                    ]
+
+                    df = None
+                    last_error = None
+                    for attempt_func in excel_read_attempts:
+                        try:
+                            df = attempt_func()
+                            # If we got a DataFrame with data, break
+                            if df is not None and not df.empty:
+                                break
+                        except Exception as e:
+                            last_error = e
+                            continue
+
+                    if df is None or df.empty:
+                        st.error(f"Failed to read Excel file after multiple attempts. Last error: {str(last_error)}")
+                        st.stop()
+
+                # Intelligent preprocessing
+                # 1. Handle multi-level columns if they exist
+                if isinstance(df.columns, pd.MultiIndex):
+                    # Combine multi-level columns into single level
+                    df.columns = [' - '.join(str(level) for level in col if pd.notna(level)).strip()
+                                for col in df.columns.values]
+
+                # 2. Clean up column names
+                def clean_column_name(col):
+                    # Convert any type to string and clean it up
+                    col_str = str(col)
+                    # Remove special characters but keep some meaningful ones
+                    col_str = col_str.replace('/', '_').replace('\\', '_')
+                    # Remove multiple spaces and trim
+                    col_str = ' '.join(col_str.split())
+                    # If empty or just spaces/special chars, return None
+                    return col_str if col_str.strip() else None
+
+                df.columns = [clean_column_name(col) or f'Column_{i}' 
+                            for i, col in enumerate(df.columns)]
+
+                # 3. Remove completely empty rows and columns
+                df = df.dropna(how='all').dropna(axis=1, how='all')
+
+                # 4. Handle duplicate column names
+                if len(df.columns) != len(set(df.columns)):
+                    seen = {}
+                    new_cols = []
+                    for col in df.columns:
+                        if col in seen:
+                            seen[col] += 1
+                            new_cols.append(f"{col}_{seen[col]}")
+                        else:
+                            seen[col] = 0
+                            new_cols.append(col)
+                    df.columns = new_cols
+
+                # 5. Convert numeric-like strings to numbers where appropriate
+                for col in df.columns:
+                    # Try to convert to numeric if more than 50% of non-null values are numeric-like
+                    try:
+                        non_null_values = df[col].dropna()
+                        if len(non_null_values) > 0:
+                            numeric_count = pd.to_numeric(non_null_values, errors='coerce').notna().sum()
+                            if numeric_count / len(non_null_values) > 0.5:
+                                df[col] = pd.to_numeric(df[col], errors='coerce')
+                    except:
+                        continue
+
+            except Exception as e:
+                st.error(f"Error reading file: {str(e)}")
+                st.stop()
 
             # Store the original dataframe in session state
             st.session_state.uploaded_df = df
