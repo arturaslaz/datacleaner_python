@@ -4,8 +4,8 @@ from pathlib import Path
 import tempfile
 import os
 from dotenv import load_dotenv
-from data_processing.cleaner import DataCleaner
-from ai_agents.assessment_agent import DataAssessmentAgent
+from app.data_processing.cleaner import DataCleaner, AIDataCleaner
+from app.ai_agents.assessment_agent import DataAssessmentAgent
 import asyncio
 import datetime
 
@@ -77,25 +77,26 @@ async def analyze_and_clean_data(df: pd.DataFrame):
             )
         except asyncio.TimeoutError:
             st.error("Analysis timed out. Using default cleaning strategy.")
-            assessment = None
+            return None, None, None
         
-        # Get cleaning strategy based on assessment or use defaults
-        if assessment:
-            strategy = agent.get_cleaning_strategy(assessment)
-        else:
-            strategy = {
-                'standardize_names': True,
-                'remove_duplicates': True,
-                'handle_missing': 'auto',
-                'detect_outliers': 3.0,
-                'convert_types': True,
-                'remove_low_variance': 0.01
-            }
-            assessment = None  # Ensure we return None if assessment failed
+        if not assessment:
+            st.error("Failed to assess the dataset.")
+            return None, None, None
+
+        # Initialize the AI-driven cleaner
+        ai_cleaner = AIDataCleaner(df, agent.llm)
         
-        # Initialize and run the cleaner
-        cleaner = DataCleaner(df)
-        cleaned_df, report = cleaner.clean(strategy)
+        # Clean the data with AI validation
+        cleaned_df, report = await ai_cleaner.clean(assessment)
+        
+        # Display validation results
+        if report.validation_results:
+            st.subheader("🔍 Validation Results")
+            for result in report.validation_results:
+                if result["valid"]:
+                    st.success(f"{result['step']}: {result['explanation']}")
+                else:
+                    st.warning(f"{result['step']}: {result['explanation']}")
         
         return cleaned_df, report, assessment
     except Exception as e:

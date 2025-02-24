@@ -11,6 +11,7 @@ env:
   SERVICE_NAME: datacleaner-app
   REGISTRY: europe-west3-docker.pkg.dev
   REPOSITORY: datacleaner-app
+  STREAMLIT_SERVER_PORT: 8080
 
 jobs:
   deploy:
@@ -58,4 +59,6 @@ jobs:
           flags: --allow-unauthenticated
           env_vars: |
             GOOGLE_API_KEY=${{ env.GOOGLE_API_KEY }}
-            ENVIRONMENT=production 
+            ENVIRONMENT=production
+            STREAMLIT_SERVER_PORT=8080
+            DEBUG=false 

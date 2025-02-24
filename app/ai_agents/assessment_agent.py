@@ -50,7 +50,7 @@ class DataAssessmentAgent:
         )
         
         self.prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a data quality expert. Your task is to analyze datasets and determine their structure, patterns, and relationships WITHOUT making assumptions about column names or types.
+            ("system", """You are a data quality expert. Your task is to analyze datasets and orchestrate the cleaning process. You have access to various data cleaning tools and must decide how to use them effectively.
 
 For each column, analyze:
 1. The distribution and patterns in the data
@@ -67,6 +67,13 @@ Identify columns as critical if they:
 - Show date/timestamp patterns
 - Contain what appears to be measurement or transaction data
 
+For each cleaning operation, provide specific instructions including:
+1. The exact cleaning method to use
+2. The parameters and thresholds to apply
+3. The order of operations
+4. Any column-specific handling required
+5. Validation criteria for the cleaning results
+
 Your response must follow this EXACT format:
 
 QUALITY SCORE: [number between 0 and 1]
@@ -79,8 +86,10 @@ ISSUES DETECTED:
 CLEANING RECOMMENDATIONS:
 1. Action: [action name]
    Parameters: [parameters as key-value pairs]
+   Validation: [criteria to validate this cleaning step]
 2. Action: [action name]
    Parameters: [parameters as key-value pairs]
+   Validation: [criteria to validate this cleaning step]
 ...
 
 COLUMN CLASSIFICATIONS:
@@ -96,6 +105,11 @@ COLUMN SPECIFIC ISSUES:
 [column name]:
 - [issue 1]
 - [issue 2]
+...
+
+CLEANING VALIDATION:
+- [overall validation check 1]
+- [overall validation check 2]
 ...
 """),
             ("human", """

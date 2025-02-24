@@ -20,13 +20,19 @@ ENV PYTHONUNBUFFERED=1
 ENV STREAMLIT_SERVER_PORT=8080
 ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
 ENV ENVIRONMENT=production
+ENV PYTHONPATH=/app
+
+# Create start script
+RUN echo '#!/bin/bash\n\
+    streamlit run app/main.py --server.port=$STREAMLIT_SERVER_PORT --server.address=0.0.0.0' > /app/start.sh && \
+    chmod +x /app/start.sh
 
 # Add healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl --fail http://localhost:8080/_stcore/health || exit 1
+    CMD curl --fail http://localhost:${STREAMLIT_SERVER_PORT}/_stcore/health || exit 1
 
 # Expose the port Streamlit will run on
-EXPOSE 8080
+EXPOSE ${STREAMLIT_SERVER_PORT}
 
 # Command to run the application
-ENTRYPOINT ["streamlit", "run", "app/main.py", "--server.port=8080", "--server.address=0.0.0.0"] 
+ENTRYPOINT ["/app/start.sh"] 
